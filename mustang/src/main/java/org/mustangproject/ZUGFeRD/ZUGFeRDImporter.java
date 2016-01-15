@@ -35,12 +35,12 @@ import org.xml.sax.SAXException;
 
 public class ZUGFeRDImporter {
 	/*
-	call extract(importFilename). 
-	containsMeta() will return if ZUGFeRD data has been found, 
+	call extract(importFilename).
+	containsMeta() will return if ZUGFeRD data has been found,
 	afterwards you can call getBIC(), getIBAN() etc.
 
 */
-	
+
 	/**@var if metadata has been found	 */
 	private boolean containsMeta=false;
 	/**@var the reference (i.e. invoice number) of the sender */
@@ -49,16 +49,20 @@ public class ZUGFeRDImporter {
 	private String IBAN;
 	private String holder;
 	private String amount;
+	private String GLN;
+	private String PLZ;
+	private String LineOne;
+	private String LineTwo;
 	/** Raw XML form of the extracted data - may be directly obtained. */
 	private byte[] rawXML=null;
 	private String bankName;
 	private boolean amountFound;
-	
+
 	/**
 	 * Extracts a ZUGFeRD invoice from a PDF document represented by a file name.
 	 * Errors are just logged to STDOUT.
 	 */
-	public void extract(String pdfFilename) 
+	public void extract(String pdfFilename)
 	{
 		try
 		{
@@ -67,7 +71,7 @@ public class ZUGFeRDImporter {
 		{
 			ioe.printStackTrace();
 		}
-	}	
+	}
 
 	/**
 	 * Extracts a ZUGFeRD invoice from a PDF document represented by an input stream.
@@ -124,7 +128,7 @@ public class ZUGFeRDImporter {
 		}
 
 	}
-	
+
 	public void parse() {
 		DocumentBuilderFactory factory = null;
 		DocumentBuilder builder = null;
@@ -148,17 +152,17 @@ public class ZUGFeRDImporter {
 			ex2.printStackTrace();
 		}
 		NodeList ndList ;
-		
+
 		// rootNode = document.getDocumentElement();
 		// ApplicableSupplyChainTradeSettlement
 		 ndList =  document.getDocumentElement()
 				.getElementsByTagNameNS("*","PaymentReference"); //$NON-NLS-1$
-				
+
 		for (int bookingIndex = 0; bookingIndex < ndList
 				.getLength(); bookingIndex++) {
 			Node booking = ndList.item(bookingIndex);
 			// if there is a attribute in the tag number:value
-			
+
 			setForeignReference(booking.getTextContent());
 
 		}
@@ -190,7 +194,7 @@ public class ZUGFeRDImporter {
 					<ram:BICID>DE5656565</ram:BICID>
 					<ram:Name>Commerzbank</ram:Name>
 				</ram:PayeeSpecifiedCreditorFinancialInstitution>
-			
+
 */
 		ndList = document.getElementsByTagNameNS("*","PayeePartyCreditorFinancialAccount"); //$NON-NLS-1$
 
@@ -201,7 +205,7 @@ public class ZUGFeRDImporter {
 			// there are many "name" elements, so get the one below
 			// SellerTradeParty
 			NodeList bookingDetails = booking.getChildNodes();
-			
+
 
 			for (int detailIndex = 0; detailIndex < bookingDetails
 					.getLength(); detailIndex++) {
@@ -209,7 +213,7 @@ public class ZUGFeRDImporter {
 				if ((detail.getLocalName()!=null)&&(detail.getLocalName().equals("IBANID"))) { //$NON-NLS-1$
 					setIBAN(detail.getTextContent());
 
-				} 
+				}
 			}
 
 		}
@@ -250,6 +254,20 @@ public class ZUGFeRDImporter {
 				if ((detail.getLocalName()!=null)&&(detail.getLocalName().equals("Name"))) { //$NON-NLS-1$
 					setHolder(detail.getTextContent());
 				}
+				if((detail.getLocalName()!=null)&&(detail.getLocalName().equals("GlobalID"))){
+					if(detail.getAttributes().getNamedItem("schemeID").equals("0088")){
+						setGLN(detail.getTextContent());
+					}
+				}
+				if((detail.getLocalName()!=null)&&(detail.getLocalName().equals("PostcodeCode"))){
+					setPLZ(detail.getTextContent());
+				}
+				if((detail.getLocalName()!=null)&&(detail.getLocalName().equals("LineOne"))){
+					setLineOne(detail.getTextContent());
+				}
+				if((detail.getLocalName()!=null)&&(detail.getLocalName().equals("LineTwo"))){
+					setLineTwo(detail.getTextContent());
+				}
 			}
 
 		}
@@ -267,7 +285,7 @@ public class ZUGFeRDImporter {
 
 
 		if  (!amountFound) {
-			/* there is apparently no requirement to mention DuePayableAmount,, 
+			/* there is apparently no requirement to mention DuePayableAmount,,
 			 * if it's not there, check for GrandTotalAmount
 			 */
 			ndList = document.getElementsByTagNameNS("*","GrandTotalAmount"); //$NON-NLS-1$
@@ -279,9 +297,9 @@ public class ZUGFeRDImporter {
 				setAmount(booking.getTextContent());
 
 			}
-			
+
 		}
-	
+
 
 	}
 
@@ -317,6 +335,22 @@ public class ZUGFeRDImporter {
 	private void setBIC(String bic) {
 		this.BIC = bic;
 	}
+
+
+
+	public String getGLN() {
+		if (rawXML==null) {
+			throw new RuntimeException("use parse() before requesting a value");
+		}
+		return GLN;
+	}
+
+
+
+	private void setGLN(String gln) {
+		this.GLN = gln;
+	}
+
 
 
 	private void setBankName(String bankname) {
@@ -363,6 +397,49 @@ public class ZUGFeRDImporter {
 
 
 
+	private void setLineTwo(String LineTwo) {
+		this.LineTwo = LineTwo;
+	}
+
+
+
+	public String getLineTwo() {
+		if (rawXML==null) {
+			throw new RuntimeException("use parse() before requesting a value");
+		}
+		return LineTwo;
+	}
+
+
+	private void setLineOne(String LineOne) {
+		this.LineOne = LineOne;
+	}
+
+
+
+	public String getLineOne() {
+		if (rawXML==null) {
+			throw new RuntimeException("use parse() before requesting a value");
+		}
+		return LineOne;
+	}
+
+
+	private void setPLZ(String plz) {
+		this.PLZ = plz;
+	}
+
+
+	public String getPLZ() {
+		if (rawXML==null) {
+			throw new RuntimeException("use parse() before requesting a value");
+		}
+		if(PLZ != null){
+			return PLZ;
+		}
+		return "";
+	}
+
 	public String getAmount() {
 		if (rawXML==null) {
 			throw new RuntimeException("use parse() before requesting a value");
@@ -381,7 +458,7 @@ public class ZUGFeRDImporter {
 
 	public String getMeta() {
 		if (rawXML==null){
-			return null; 
+			return null;
 		} else {
 			return new String(rawXML);
 		}
@@ -391,7 +468,7 @@ public class ZUGFeRDImporter {
 	/**
 	 * Returns the raw XML data as extracted from the ZUGFeRD PDF file.
 	 */
-	public byte[] getRawXML() 
+	public byte[] getRawXML()
 	{
 		return rawXML;
 	}
@@ -400,8 +477,8 @@ public class ZUGFeRDImporter {
 	 * will return true if the metadata (just extract-ed or set with setMeta) contains ZUGFeRD XML
 	 * */
 	public boolean canParse() {
-		
-		
+
+
 		//SpecifiedExchangedDocumentContext is in the schema, so a relatively good indication if zugferd is present - better than just invoice
 		String meta=getMeta();
 		return (meta!=null)&&( meta.length()>0)&&( meta.contains("SpecifiedExchangedDocumentContext")); //$NON-NLS-1$
